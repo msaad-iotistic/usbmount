@@ -72,6 +72,11 @@ if [ ! -e /var/run/usbmount ]; then
     log debug "creating /var/run/usbmount directory"
 fi
 
+# Check if /run/media exists, if not create it.
+if [ ! -e /run/media ]; then
+	mkdir -p /run/media
+fi
+
 umask 022
 
 
