@@ -38,6 +38,11 @@ in_list()
     return 1
 }
 
+# returns 0 if the given mountpoint (second field) is found in /proc/mounts
+is_mounted() {
+    # exact second-field match, avoids issues with spacing/regex
+    awk -v mp="$1" '$2==mp { exit 0 } END { exit 1 }' /proc/mounts
+}
 
 ######################################################################
 # Main program
@@ -130,14 +135,27 @@ if [ "$1" = add ]; then
 	# Test if the filesystem type is in the list of filesystem
 	# types to mount.
 	if in_list "$fstype" "$FILESYSTEMS"; then
-	    # Search an available mountpoint.
-	    for v in $MOUNTPOINTS; do
-		if [ -d "$v" ] && ! grep -q "^[^ ][^ ]*  *$v " /proc/mounts; then
-		    mountpoint="$v"
-		    log debug "mountpoint $mountpoint is available for $DEVNAME"
-		    break
-		fi
-	    done
+        # Search an available mountpoint; create missing mountpoint directories automatically.
+        for v in $MOUNTPOINTS; do
+            # create the directory if missing (persistent on disk)
+            if [ ! -d "$v" ]; then
+                mkdir -p "$v" || {
+                    log warning "could not create mountpoint directory $v"
+                    continue
+                }
+                # secure but accessible to normal users reading the mountpoint when mounted
+                chmod 0755 "$v" || :
+                log debug "created mountpoint directory $v"
+            fi
+
+            # Use the more robust is_mounted helper to check if it's currently used.
+            if ! is_mounted "$v"; then
+                mountpoint="$v"
+                log debug "mountpoint $mountpoint is available for $DEVNAME"
+                break
+            fi
+        done
+
 	    if [ -n "$mountpoint" ]; then
 		# Determine mount options.
 		options=
