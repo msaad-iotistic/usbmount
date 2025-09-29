@@ -1,16 +1,20 @@
 #sudo transactional-update shell
 # inside the transactional shell:
-cp usbmount /usr/share/usbmount/usbmount
+
+# function to copy files to a directory, creating the directory if it doesn't exist
+cp2dir() {
+    src="$1"
+    dst_dir="$2"
+
+    mkdir -p "$dst_dir"
+    cp "$src" "$dst_dir"
+}
+
+cp2dir "00_create_model_symlink" "/etc/usbmount/mount.d"
+cp2dir "00_remove_model_symlink" "/etc/usbmount/umount.d"
+cp2dir "usbmount" "/usr/share/usbmount"
 chmod 0755 /usr/share/usbmount/usbmount
 
-mkdir -p /etc/usbmount
-cp usbmount.conf /etc/usbmount/usbmount.conf
-
-mkdir -p /etc/usbmount/mount.d   # instead of copying missing dir
-# (leave it empty or add scripts later)
-
-mkdir -p /etc/udev/rules.d
-cp 90-usbmount.rules /etc/udev/rules.d/
-
-mkdir -p /etc/systemd/system
-cp usbmount@.service /etc/systemd/system/
+cp2dir "usbmount.conf" "/etc/usbmount"
+cp2dir "90-usbmount.rules" "/lib/udev/rules.d"
+cp2dir "usbmount@.service" "/lib/systemd/system"
