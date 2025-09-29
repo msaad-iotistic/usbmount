@@ -8,6 +8,12 @@ cp2dir() {
 
     mkdir -p "$dst_dir"
     cp "$src" "$dst_dir"
+
+    if [ $? -ne 0 ]; then
+        echo "Error copying $src to $dst_dir"
+        exit 1
+    fi
+    echo "Copied $src to $dst_dir"
 }
 
 cp2dir "00_create_model_symlink" "/etc/usbmount/mount.d"
