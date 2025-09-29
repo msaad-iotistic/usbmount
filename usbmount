@@ -82,12 +82,20 @@ umask 022
 
 if [ "$1" = add ]; then
 
-    # Acquire lock.
-    log debug "trying to acquire lock /var/run/usbmount/.mount.lock"
-    lockfile-create --retry 3 /var/run/usbmount/.mount || \
-	{ log err "cannot acquire lock /var/run/usbmount/.mount.lock"; exit 1; }
-    trap '( lockfile-remove /var/run/usbmount/.mount )' 0
-    log debug "acquired lock /var/run/usbmount/.mount.lock"
+	# Acquire lock.
+	LOCKFILE="/var/run/usbmount/.mount.lock"
+	log debug "trying to acquire lock $LOCKFILE"
+	# Open file descriptor 200 for the lock file (creates file if missing)
+	exec 200>"$LOCKFILE" || { log err "cannot open lockfile $LOCKFILE"; exit 1; }
+	# Try to acquire flock, retry 3 times (sleep 1 between tries)
+	tries=0
+	until flock -n 200; do
+		tries=$((tries + 1))
+		[ "$tries" -ge 3 ] && { log err "cannot acquire lock $LOCKFILE"; exit 1; }
+		sleep 1
+	done
+	trap '( flock -u 200; rm -f "$LOCKFILE" )' 0
+	log debug "acquired lock $LOCKFILE"
 
     # Query udev for the expected device information (as we are now running in
     # a service's context and the env variables have been lost)
